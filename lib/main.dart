@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
+import 'presentation/pages/game_page.dart';
 
 void main() {
-  runApp(const MainApp());
+  runApp(const SpeedTapColors());
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+class SpeedTapColors extends StatelessWidget {
+  const SpeedTapColors({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text('Hello World!'),
-        ),
+    return MaterialApp(
+      title: 'Speed Tap Colors',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
+      home: const GamePage(),
     );
   }
 }
