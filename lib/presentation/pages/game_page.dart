@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../../domain/game_state.dart';
 
@@ -11,60 +10,70 @@ class GamePage extends StatefulWidget {
   GamePageState createState() => GamePageState();
 }
 
-class GamePageState extends State<GamePage>
-    with SingleTickerProviderStateMixin {
+class GamePageState extends State<GamePage> {
   final GameState _gameState = GameState();
   Timer? _timer;
-  late AnimationController _controller;
   final AudioPlayer _audioPlayer = AudioPlayer();
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-    _gameState.loadHighScore();
     _startGame();
   }
 
   void _startGame() {
     _gameState.reset();
     _timer?.cancel();
-    _updateTimer();
-  }
-
-  void _updateTimer() {
-    _timer = Timer.periodic(
-      Duration(milliseconds: (_gameState.difficulty * 1000).toInt()),
-      (timer) {
-        setState(() {
-          _gameState.changeTargetColor();
-          _controller.forward(from: 0.0);
-        });
-      },
-    );
+    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      setState(() {
+        _gameState.changeTargetColor();
+      });
+    });
   }
 
   void _onColorTap(Color tappedColor) async {
     setState(() {
       if (!_gameState.checkColor(tappedColor)) {
         _timer?.cancel();
-        _playGameOverSound();
+        _audioPlayer.play(AssetSource('sounds/gameover.mp3'));
+        _showGameOverDialog();
       } else {
-        _playCorrectSound();
-        _updateTimer();
+        _audioPlayer.play(AssetSource('sounds/correct.mp3'));
       }
     });
   }
 
-  Future<void> _playCorrectSound() async {
-    await _audioPlayer.play(AssetSource('sounds/correct.mp3'));
+  void _showGameOverDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Game Over!'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Score: ${_gameState.score}'),
+                Text('Best Score: ${_gameState.highScore}'),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _startGame();
+                },
+                child: const Text('Play Again'),
+              ),
+            ],
+          ),
+    );
   }
 
-  Future<void> _playGameOverSound() async {
-    await _audioPlayer.play(AssetSource('sounds/gameover.mp3'));
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -72,79 +81,56 @@ class GamePageState extends State<GamePage>
     return Scaffold(
       appBar: AppBar(
         title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text('Score: ${_gameState.score}'),
-            Text('High Score: ${_gameState.highScore}'),
+            const SizedBox(width: 20),
+            Text('Best: ${_gameState.highScore}'),
           ],
         ),
-      ),
-      body: _gameState.isGameOver ? _buildGameOverScreen() : _buildGameScreen(),
-    );
-  }
-
-  Widget _buildGameOverScreen() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text('Game Over!', style: Theme.of(context).textTheme.headlineLarge),
-          Text(
-            'Score: ${_gameState.score}',
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: _startGame,
-            child: const Text('Play Again'),
-          ),
+        actions: [
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _startGame),
         ],
       ),
-    );
-  }
-
-  Widget _buildGameScreen() {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Text(
-            'Tap the ${_gameState.targetColorName} squares!',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-        ),
-        Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.all(16),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-            ),
-            itemCount: 9,
-            itemBuilder: (context, index) {
-              final color = _gameState.colors[index % _gameState.colors.length];
-              return GestureDetector(
-                onTap: () => _onColorTap(color),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: BorderRadius.circular(8),
+      body:
+          _gameState.isGameOver
+              ? const Center(child: Text('Tap refresh to play again!'))
+              : Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      'Tap the ${_gameState.targetColorName} squares!',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
                   ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
+                  Expanded(
+                    child: GridView.builder(
+                      padding: const EdgeInsets.all(16),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            mainAxisSpacing: 8,
+                            crossAxisSpacing: 8,
+                          ),
+                      itemCount: 9,
+                      itemBuilder: (context, index) {
+                        final color =
+                            _gameState.colors[index % _gameState.colors.length];
+                        return GestureDetector(
+                          onTap: () => _onColorTap(color),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: color,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
     );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    _audioPlayer.dispose();
-    _timer?.cancel();
-    super.dispose();
   }
 }
