@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:math';
 
 class GameState {
   int score = 0;
@@ -8,6 +9,7 @@ class GameState {
   List<Color> colors = [Colors.red, Colors.blue, Colors.green];
   late Color targetColor;
   late String targetColorName;
+  double timeLimit = 5.0; // Temps initial en secondes
 
   GameState() {
     _loadHighScore();
@@ -30,6 +32,12 @@ class GameState {
   void reset() {
     score = 0;
     isGameOver = false;
+    timeLimit = 5.0; // Réinitialiser le temps limite
+    colors = [
+      Colors.red,
+      Colors.blue,
+      Colors.green,
+    ]; // Réinitialiser les couleurs
     changeTargetColor();
   }
 
@@ -39,9 +47,26 @@ class GameState {
     targetColorName = _getColorName(targetColor);
   }
 
+  void updateDifficulty() {
+    // Ajouter de nouvelles couleurs basées sur le score
+    if (score == 5 && !colors.contains(Colors.yellow)) {
+      colors.add(Colors.yellow);
+    }
+    if (score == 10 && !colors.contains(Colors.purple)) {
+      colors.add(Colors.purple);
+    }
+    if (score == 15 && !colors.contains(Colors.orange)) {
+      colors.add(Colors.orange);
+    }
+
+    // Réduire le temps disponible
+    timeLimit = max(1.0, 5.0 - (score ~/ 10) * 0.5);
+  }
+
   bool checkColor(Color tappedColor) {
     if (tappedColor == targetColor) {
       score++;
+      updateDifficulty();
       _saveHighScore();
       return true;
     }
@@ -54,6 +79,9 @@ class GameState {
     if (color == Colors.red) return 'red';
     if (color == Colors.blue) return 'blue';
     if (color == Colors.green) return 'green';
+    if (color == Colors.yellow) return 'yellow';
+    if (color == Colors.purple) return 'purple';
+    if (color == Colors.orange) return 'orange';
     return '';
   }
 }
