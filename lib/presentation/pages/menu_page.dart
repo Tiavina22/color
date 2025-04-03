@@ -17,47 +17,64 @@ class MenuPage extends StatelessWidget {
             colors: [Colors.grey[900]!, Colors.black, Colors.grey[900]!],
           ),
         ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                'CYBER\nCOLORS',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 50,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  height: 0.9,
-                  fontFamily: 'Orbitron',
-                  letterSpacing: 3,
-                  shadows: [
-                    Shadow(
-                      color: Colors.cyanAccent,
-                      blurRadius: 10,
-                      offset: Offset(0, 0),
+        child: Stack(
+          children: [
+            _buildAnimatedBackground(),
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.0, end: 1.0),
+                    duration: const Duration(milliseconds: 1000),
+                    curve: Curves.easeOutBack,
+                    builder: (context, value, child) {
+                      return Transform.scale(scale: value, child: child);
+                    },
+                    child: const Text(
+                      'CYBER\nCOLORS',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 50,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        height: 0.9,
+                        fontFamily: 'Orbitron',
+                        letterSpacing: 3,
+                        shadows: [
+                          Shadow(
+                            color: Colors.cyanAccent,
+                            blurRadius: 10,
+                            offset: Offset(0, 0),
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 80),
+                  _buildMenuButton(
+                    'JOUER',
+                    Icons.play_arrow,
+                    () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (context) => const GamePage()),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _buildMenuButton(
+                    'RÈGLES',
+                    Icons.rule,
+                    () => _showRules(context),
+                  ),
+                  const SizedBox(height: 20),
+                  _buildMenuButton(
+                    'QUITTER',
+                    Icons.exit_to_app,
+                    () => SystemNavigator.pop(),
+                  ),
+                ],
               ),
-              const SizedBox(height: 80),
-              _buildMenuButton(
-                'JOUER',
-                Icons.play_arrow,
-                () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => const GamePage()),
-                ),
-              ),
-              const SizedBox(height: 20),
-              _buildMenuButton('RÈGLES', Icons.rule, () => _showRules(context)),
-              const SizedBox(height: 20),
-              _buildMenuButton(
-                'QUITTER',
-                Icons.exit_to_app,
-                () => SystemNavigator.pop(),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -175,4 +192,29 @@ class MenuPage extends StatelessWidget {
           ),
     );
   }
+
+  Widget _buildAnimatedBackground() {
+    return CustomPaint(painter: CyberBackgroundPainter(), size: Size.infinite);
+  }
+}
+
+class CyberBackgroundPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint =
+        Paint()
+          ..color = Colors.cyanAccent.withOpacity(0.1)
+          ..strokeWidth = 1;
+
+    for (var i = 0; i < size.height; i += 20) {
+      canvas.drawLine(
+        Offset(0, i.toDouble()),
+        Offset(size.width, i.toDouble()),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

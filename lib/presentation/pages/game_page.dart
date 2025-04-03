@@ -11,16 +11,41 @@ class GamePage extends StatefulWidget {
   GamePageState createState() => GamePageState();
 }
 
-class GamePageState extends State<GamePage> {
+class GamePageState extends State<GamePage>
+    with SingleTickerProviderStateMixin {
   final GameState _gameState = GameState();
   Timer? _gameTimer;
   double _remainingTime = 5.0;
   final AudioPlayer _audioPlayer = AudioPlayer();
+  late AnimationController _progressController;
+  bool _showCountdown = true;
+  int _countdown = 3;
 
   @override
   void initState() {
     super.initState();
-    _startGame();
+    _progressController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _startCountdown();
+  }
+
+  void _startCountdown() {
+    setState(() => _showCountdown = true);
+    Future.delayed(const Duration(seconds: 1), () {
+      if (!mounted) return;
+      setState(() => _countdown = 2);
+      Future.delayed(const Duration(seconds: 1), () {
+        if (!mounted) return;
+        setState(() => _countdown = 1);
+        Future.delayed(const Duration(seconds: 1), () {
+          if (!mounted) return;
+          setState(() => _showCountdown = false);
+          _startGame();
+        });
+      });
+    });
   }
 
   void _startGame() {
@@ -32,11 +57,15 @@ class GamePageState extends State<GamePage> {
   void _resetTimer() {
     _gameTimer?.cancel();
     _remainingTime = _gameState.timeLimit;
+    _progressController.value = 1.0;
 
-    _gameTimer = Timer.periodic(const Duration(milliseconds: 2000), (timer) {
+    // Ralentir la fréquence de mise à jour à 100ms et ajuster la réduction du temps
+    _gameTimer = Timer.periodic(const Duration(milliseconds: 1000), (timer) {
       if (!mounted) return;
       setState(() {
-        _remainingTime -= 0.05;
+        // Réduire de 0.1 au lieu de 0.05 pour une mise à jour plus régulière
+        _remainingTime -= 0.1;
+        _progressController.value = _remainingTime / _gameState.timeLimit;
 
         if (_remainingTime <= 0) {
           _gameState.isGameOver = true;
@@ -58,8 +87,15 @@ class GamePageState extends State<GamePage> {
         _showGameOverDialog();
       } else {
         _audioPlayer.play(AssetSource('sounds/correct.mp3'));
-        _gameState.changeTargetColor();
-        _resetTimer();
+        // Ajouter un léger délai avant de changer la couleur
+        Future.delayed(const Duration(milliseconds: 2000), () {
+          if (mounted) {
+            setState(() {
+              _gameState.changeTargetColor();
+              _resetTimer();
+            });
+          }
+        });
       }
     });
   }
@@ -82,7 +118,7 @@ class GamePageState extends State<GamePage> {
               TextButton(
                 onPressed: () {
                   Navigator.of(context).pop();
-                  _startGame();
+                  _startCountdown();
                 },
                 child: const Text('Play Again'),
               ),
@@ -93,18 +129,81 @@ class GamePageState extends State<GamePage> {
 
   @override
   void dispose() {
+    _progressController.dispose();
     _gameTimer?.cancel();
     super.dispose();
+  }
+
+  Widget _buildProgressBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: AnimatedBuilder(
+        animation: _progressController,
+        builder: (context, child) {
+          return LinearProgressIndicator(
+            value: _progressController.value,
+            backgroundColor: Colors.grey[800],
+            valueColor: AlwaysStoppedAnimation<Color>(
+              _progressController.value > 0.3 ? Colors.cyanAccent : Colors.red,
+            ),
+            minHeight: 10,
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildGameOverScreen() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text(
+            'GAME OVER',
+            style: TextStyle(
+              color: Colors.cyanAccent,
+              fontSize: 40,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 4,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Score: ${_gameState.score}',
+            style: const TextStyle(color: Colors.white, fontSize: 24),
+          ),
+          const SizedBox(height: 30),
+          ElevatedButton(
+            onPressed: () => _startCountdown(),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+              side: const BorderSide(color: Colors.cyanAccent),
+            ),
+            child: const Text('REJOUER'),
+          ),
+          const SizedBox(height: 15),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('MENU PRINCIPAL'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final gridColors = List.generate(9, (index) {
-      if (index == 0) {
-        return _gameState.targetColor;
-      }
-      return _gameState.colors[Random().nextInt(_gameState.colors.length)];
+      // Assurer une meilleure distribution des couleurs
+      return index < _gameState.colors.length
+          ? _gameState.colors[index]
+          : _gameState.colors[Random().nextInt(_gameState.colors.length)];
     })..shuffle();
+
+    // Assurer qu'il y a au moins une couleur cible
+    if (!gridColors.contains(_gameState.targetColor)) {
+      gridColors[Random().nextInt(gridColors.length)] = _gameState.targetColor;
+    }
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -128,7 +227,7 @@ class GamePageState extends State<GamePage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.cyanAccent),
-            onPressed: _startGame,
+            onPressed: _startCountdown,
           ),
         ],
       ),
@@ -141,21 +240,22 @@ class GamePageState extends State<GamePage> {
           ),
         ),
         child:
-            _gameState.isGameOver
-                ? const Center(
+            _showCountdown
+                ? Center(
                   child: Text(
-                    'GAME OVER\nTAP REFRESH',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
+                    '$_countdown',
+                    style: const TextStyle(
+                      fontSize: 100,
                       color: Colors.cyanAccent,
-                      fontSize: 30,
                       fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
                     ),
                   ),
                 )
+                : _gameState.isGameOver
+                ? _buildGameOverScreen()
                 : Column(
                   children: [
+                    _buildProgressBar(),
                     Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Text(
