@@ -11,14 +11,22 @@ class SpeedTapColors extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Speed Tap Colors',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
+      title: 'Cyber Colors',
+      theme: ThemeData.dark().copyWith(
+        primaryColor: Colors.black,
+        scaffoldBackgroundColor: Colors.black,
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            foregroundColor: Colors.white,
-            backgroundColor: Colors.blue,
+            foregroundColor: Colors.cyanAccent,
+            backgroundColor: Colors.black,
+          ),
+        ),
+        textTheme: const TextTheme(
+          headlineSmall: TextStyle(
+            color: Colors.cyanAccent,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 2,
           ),
         ),
       ),

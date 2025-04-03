@@ -33,11 +33,9 @@ class GamePageState extends State<GamePage> {
     _gameTimer?.cancel();
     _remainingTime = _gameState.timeLimit;
 
-    // Changement à 50ms pour une animation plus fluide mais avec moins d'impact sur les performances
     _gameTimer = Timer.periodic(const Duration(milliseconds: 2000), (timer) {
       if (!mounted) return;
       setState(() {
-        // Réduire de 0.05 au lieu de 0.1 pour un décompte plus lent
         _remainingTime -= 0.05;
 
         if (_remainingTime <= 0) {
@@ -51,7 +49,7 @@ class GamePageState extends State<GamePage> {
   }
 
   void _onColorTap(Color tappedColor) async {
-    if (_remainingTime <= 0) return; // Empêcher les clics après le temps écoulé
+    if (_remainingTime <= 0) return;
 
     setState(() {
       if (!_gameState.checkColor(tappedColor)) {
@@ -60,9 +58,8 @@ class GamePageState extends State<GamePage> {
         _showGameOverDialog();
       } else {
         _audioPlayer.play(AssetSource('sounds/correct.mp3'));
-        _gameState
-            .changeTargetColor(); // Changer la couleur cible immédiatement
-        _resetTimer(); // Réinitialiser le timer
+        _gameState.changeTargetColor();
+        _resetTimer();
       }
     });
   }
@@ -110,63 +107,122 @@ class GamePageState extends State<GamePage> {
     })..shuffle();
 
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
+        backgroundColor: Colors.black,
+        elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: Colors.cyanAccent),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Score: ${_gameState.score}'),
+            _buildInfoText('SCORE', _gameState.score.toString()),
             const SizedBox(width: 20),
-            Text('Best: ${_gameState.highScore}'),
+            _buildInfoText('BEST', _gameState.highScore.toString()),
             const SizedBox(width: 20),
-            Text('Time: ${_remainingTime.toStringAsFixed(1)}s'),
+            _buildInfoText('TIME', _remainingTime.toStringAsFixed(1)),
           ],
         ),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _startGame),
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.cyanAccent),
+            onPressed: _startGame,
+          ),
         ],
       ),
-      body:
-          _gameState.isGameOver
-              ? const Center(child: Text('Tap refresh to play again!'))
-              : Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      'Tap the ${_gameState.targetColorName} squares!',
-                      style: Theme.of(context).textTheme.headlineSmall,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.grey[900]!, Colors.black, Colors.grey[900]!],
+          ),
+        ),
+        child:
+            _gameState.isGameOver
+                ? const Center(
+                  child: Text(
+                    'GAME OVER\nTAP REFRESH',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.cyanAccent,
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
                     ),
                   ),
-                  Expanded(
-                    child: GridView.builder(
-                      padding: const EdgeInsets.all(16),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 3,
-                            mainAxisSpacing: 8,
-                            crossAxisSpacing: 8,
-                          ),
-                      itemCount: 9,
-                      itemBuilder: (context, index) {
-                        final color = gridColors[index];
-                        return GestureDetector(
-                          onTap: () => _onColorTap(color),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: color,
-                              borderRadius: BorderRadius.circular(8),
+                )
+                : Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        'Tap the ${_gameState.targetColorName} squares!',
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(color: Colors.cyanAccent),
+                      ),
+                    ),
+                    Expanded(
+                      child: GridView.builder(
+                        padding: const EdgeInsets.all(16),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              mainAxisSpacing: 8,
+                              crossAxisSpacing: 8,
                             ),
-                          ),
-                        );
-                      },
+                        itemCount: 9,
+                        itemBuilder: (context, index) {
+                          final color = gridColors[index];
+                          return GestureDetector(
+                            onTap: () => _onColorTap(color),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: color,
+                                borderRadius: BorderRadius.circular(8),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.cyanAccent.withOpacity(0.5),
+                                    blurRadius: 4,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+      ),
+    );
+  }
+
+  Widget _buildInfoText(String label, String value) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.grey,
+            fontSize: 12,
+            letterSpacing: 1,
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.cyanAccent,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1,
+          ),
+        ),
+      ],
     );
   }
 }
